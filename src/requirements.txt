@@ -1,0 +1,13 @@
+# Nutanix Prism MCP Server — Python dependencies
+
+# MCP SDK (FastMCP + stdio transport)
+mcp[cli]>=1.3.0
+
+# HTTP client for Nutanix v2 API calls
+requests>=2.31.0
+
+# urllib3 is a transitive dependency of requests; pin for InsecureRequestWarning support
+urllib3>=2.0.0
+
+# YAML parsing for inventory.yaml
+pyyaml>=6.0.0

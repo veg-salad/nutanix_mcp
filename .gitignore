@@ -1,0 +1,8 @@
+# Credentials — never commit these
+.vscode/mcp.json
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
