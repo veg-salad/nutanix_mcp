@@ -1,0 +1,15 @@
+# Nutanix Cluster Inventory
+# Add one entry per Prism Central (PC) instance and one per Prism Element (PE) cluster.
+# Credentials for PC and PE are configured separately in .vscode/mcp.json.
+# Use the name value as pc_name in PC tools and cluster_name in PE tools.
+
+prism_central:
+  - name: SAMPLE-PC-1
+    pc_host: 192.168.1.50
+
+clusters:
+  - name: SAMPLE-CLUSTER-1
+    pe_host: 192.168.1.100
+
+  - name: SAMPLE-CLUSTER-2
+    pe_host: 192.168.1.200
