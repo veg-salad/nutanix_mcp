@@ -1,0 +1,180 @@
+"""PE resource utilization stats — time-series metrics for VMs, hosts, cluster, and containers.
+
+All ppm (parts-per-million) metrics can be converted to a percentage by dividing by 10,000.
+Example: 500,000 ppm → 50 %.
+"""
+
+import time
+
+from app import mcp
+from client import pe_get
+from registry import json_response, resolve_host
+
+# ---------------------------------------------------------------------------
+# Default metric sets
+# ---------------------------------------------------------------------------
+
+_VM_METRICS = [
+    "hypervisor_cpu_usage_ppm",               # Guest vCPU utilisation  (ppm → %)
+    "memory_usage_ppm",                        # Guest memory utilisation (ppm → %)
+    "controller_num_iops",                     # Total storage IOPS
+    "controller_io_bandwidth_kBps",            # Total I/O bandwidth (kB/s)
+    "controller_read_io_bandwidth_kBps",       # Read bandwidth (kB/s)
+    "controller_write_io_bandwidth_kBps",      # Write bandwidth (kB/s)
+    "controller_avg_read_io_latency_usecs",    # Avg read latency (µs)
+    "controller_avg_write_io_latency_usecs",   # Avg write latency (µs)
+    "hypervisor_num_net_bytes_received",       # Network RX (bytes)
+    "hypervisor_num_net_bytes_transmitted",    # Network TX (bytes)
+]
+
+_HOST_METRICS = [
+    "hypervisor_cpu_usage_ppm",               # Host CPU utilisation  (ppm → %)
+    "hypervisor_memory_usage_ppm",            # Host memory utilisation (ppm → %)
+    "controller_num_iops",                    # Storage controller IOPS
+    "controller_io_bandwidth_kBps",           # Storage I/O bandwidth (kB/s)
+    "controller_avg_read_io_latency_usecs",   # Avg read latency (µs)
+    "controller_avg_write_io_latency_usecs",  # Avg write latency (µs)
+]
+
+_CLUSTER_METRICS = [
+    "hypervisor_cpu_usage_ppm",               # Cluster-wide CPU utilisation  (ppm → %)
+    "hypervisor_memory_usage_ppm",            # Cluster-wide memory utilisation (ppm → %)
+    "controller_num_iops",                    # Cluster IOPS
+    "controller_io_bandwidth_kBps",           # Cluster I/O bandwidth (kB/s)
+    "controller_avg_read_io_latency_usecs",   # Avg read latency (µs)
+    "controller_avg_write_io_latency_usecs",  # Avg write latency (µs)
+    "storage_usage_bytes",                    # Used storage (bytes)
+    "storage_capacity_bytes",                 # Total storage capacity (bytes)
+]
+
+_CONTAINER_METRICS = [
+    "controller_num_iops",                    # Container IOPS
+    "controller_io_bandwidth_kBps",           # Container I/O bandwidth (kB/s)
+    "controller_avg_read_io_latency_usecs",   # Avg read latency (µs)
+    "controller_avg_write_io_latency_usecs",  # Avg write latency (µs)
+    "storage_usage_bytes",                    # Used storage (bytes)
+    "storage_capacity_bytes",                 # Total capacity (bytes)
+]
+
+
+def _stats_params(metrics, duration_secs, interval_secs):
+    """Build the list-of-tuples params block used by all PE /stats/ endpoints."""
+    now_usecs = int(time.time() * 1_000_000)
+    start_usecs = now_usecs - duration_secs * 1_000_000
+    return (
+        [("metrics[]", m) for m in metrics]
+        + [
+            ("startTimeInUsecs", start_usecs),
+            ("endTimeInUsecs", now_usecs),
+            ("intervalInSecs", interval_secs),
+        ]
+    )
+
+
+# ---------------------------------------------------------------------------
+# Stat tools
+# ---------------------------------------------------------------------------
+
+@mcp.tool()
+def get_vm_stats(
+    vm_uuid: str,
+    cluster_name=None,
+    duration_secs: int = 3600,
+    interval_secs: int = 60,
+) -> str:
+    """
+    Get resource utilization time-series statistics for a VM.
+
+    Returns CPU usage (ppm), memory usage (ppm), storage IOPS, I/O bandwidth
+    (read/write), read/write latency (µs), and network RX/TX bytes over the
+    requested time window.  Divide ppm values by 10,000 to get a percentage.
+
+    Args:
+        vm_uuid: UUID of the VM. Obtain from list_vms.
+        cluster_name: Cluster name from inventory.yaml. Omit to use the default.
+        duration_secs: Time window ending now, in seconds (default 3600 = last hour).
+        interval_secs: Sampling interval in seconds (default 60).
+    """
+    return json_response(pe_get(
+        f"/vms/{vm_uuid}/stats/",
+        _stats_params(_VM_METRICS, duration_secs, interval_secs),
+        host=resolve_host(cluster_name),
+    ))
+
+
+@mcp.tool()
+def get_host_stats(
+    host_uuid: str,
+    cluster_name=None,
+    duration_secs: int = 3600,
+    interval_secs: int = 60,
+) -> str:
+    """
+    Get resource utilization time-series statistics for a host (node).
+
+    Returns CPU usage (ppm), memory usage (ppm), storage IOPS, I/O bandwidth,
+    and read/write latency (µs) over the requested time window.
+    Divide ppm values by 10,000 to get a percentage.
+
+    Args:
+        host_uuid: UUID of the host. Obtain from list_hosts.
+        cluster_name: Cluster name from inventory.yaml. Omit to use the default.
+        duration_secs: Time window ending now, in seconds (default 3600 = last hour).
+        interval_secs: Sampling interval in seconds (default 60).
+    """
+    return json_response(pe_get(
+        f"/hosts/{host_uuid}/stats/",
+        _stats_params(_HOST_METRICS, duration_secs, interval_secs),
+        host=resolve_host(cluster_name),
+    ))
+
+
+@mcp.tool()
+def get_cluster_stats(
+    cluster_name=None,
+    duration_secs: int = 3600,
+    interval_secs: int = 60,
+) -> str:
+    """
+    Get cluster-wide resource utilization time-series statistics.
+
+    Returns CPU usage (ppm), memory usage (ppm), storage IOPS, I/O bandwidth,
+    read/write latency (µs), and total storage capacity/usage (bytes) over
+    the requested time window.  Divide ppm values by 10,000 to get a percentage.
+
+    Args:
+        cluster_name: Cluster name from inventory.yaml. Omit to use the default.
+        duration_secs: Time window ending now, in seconds (default 3600 = last hour).
+        interval_secs: Sampling interval in seconds (default 60).
+    """
+    return json_response(pe_get(
+        "/cluster/stats/",
+        _stats_params(_CLUSTER_METRICS, duration_secs, interval_secs),
+        host=resolve_host(cluster_name),
+    ))
+
+
+@mcp.tool()
+def get_storage_container_stats(
+    container_name: str,
+    cluster_name=None,
+    duration_secs: int = 3600,
+    interval_secs: int = 60,
+) -> str:
+    """
+    Get I/O and capacity utilization time-series statistics for a storage container.
+
+    Returns IOPS, I/O bandwidth, read/write latency (µs), and storage
+    capacity/usage (bytes) over the requested time window.
+
+    Args:
+        container_name: Name or UUID of the storage container. Obtain from list_storage_containers.
+        cluster_name: Cluster name from inventory.yaml. Omit to use the default.
+        duration_secs: Time window ending now, in seconds (default 3600 = last hour).
+        interval_secs: Sampling interval in seconds (default 60).
+    """
+    return json_response(pe_get(
+        f"/storage_containers/{container_name}/stats/",
+        _stats_params(_CONTAINER_METRICS, duration_secs, interval_secs),
+        host=resolve_host(cluster_name),
+    ))

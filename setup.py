@@ -77,11 +77,29 @@ def install_dependencies():
     ok("Dependencies installed")
 
 
+# Placeholder strings written to mcp.json for credentials not yet supplied.
+_CREDENTIAL_PLACEHOLDERS = {
+    "NUTANIX_PE_USERNAME":  "YOUR_PE_USERNAME",
+    "NUTANIX_PE_PASSWORD":  "YOUR_PE_PASSWORD",
+    "NUTANIX_VERIFY_SSL":   "false",
+    "NUTANIX_PC_USERNAME": "YOUR_PC_USERNAME",
+    "NUTANIX_PC_PASSWORD": "YOUR_PC_PASSWORD",
+    "NUTANIX_PC_API_KEY":  "YOUR_PC_API_KEY",
+}
+
+
+def _is_placeholder(key, val):
+    """Return True when a value is blank or still the default placeholder."""
+    return not val or val == _CREDENTIAL_PLACEHOLDERS.get(key, "")
+
+
 def create_mcp_json():
+    import getpass
+
     vscode_dir = os.path.join(BASE_DIR, ".vscode")
     mcp_path = os.path.join(vscode_dir, "mcp.json")
 
-    # Load existing config (if any) so we can preserve what's already set
+    # Load existing config so we can preserve real values already set
     existing_env = {}
     if os.path.exists(mcp_path):
         try:
@@ -96,10 +114,17 @@ def create_mcp_json():
         except Exception:
             pass
 
-    env = dict(existing_env)  # start from existing values
+    # Start from existing values; seed any missing keys with placeholders
+    env = dict(existing_env)
+    for key, placeholder in _CREDENTIAL_PLACEHOLDERS.items():
+        if key not in env:
+            env[key] = placeholder
 
-    need_pe = not env.get("NUTANIX_USERNAME")
-    need_pc = not env.get("NUTANIX_PC_API_KEY") and not env.get("NUTANIX_PC_USERNAME")
+    need_pe = _is_placeholder("NUTANIX_PE_USERNAME", env.get("NUTANIX_PE_USERNAME", ""))
+    need_pc = (
+        _is_placeholder("NUTANIX_PC_API_KEY",  env.get("NUTANIX_PC_API_KEY",  ""))
+        and _is_placeholder("NUTANIX_PC_USERNAME", env.get("NUTANIX_PC_USERNAME", ""))
+    )
 
     if not need_pe and not need_pc:
         ok(".vscode/mcp.json already has PE and PC credentials — skipping")
@@ -107,23 +132,31 @@ def create_mcp_json():
 
     if need_pe:
         print("\n  Enter your Nutanix Prism Element (PE) credentials.")
-        print("  These are stored only in .vscode/mcp.json.\n")
-        env["NUTANIX_USERNAME"] = prompt("PE username (e.g. admin)")
-        env["NUTANIX_PASSWORD"] = prompt("PE password", secret=True)
-        ssl_input = input("  Verify SSL certificate? (yes/no) [no]: ").strip().lower()
-        env["NUTANIX_VERIFY_SSL"] = "true" if ssl_input == "yes" else "false"
+        print("  Press Enter to skip — placeholders will remain in .vscode/mcp.json.\n")
+        username = input("  PE username (e.g. admin): ").strip()
+        if username:
+            env["NUTANIX_PE_USERNAME"] = username
+            env["NUTANIX_PE_PASSWORD"] = getpass.getpass("  PE password: ")
+            ssl_input = input("  Verify SSL certificate? (yes/no) [no]: ").strip().lower()
+            env["NUTANIX_VERIFY_SSL"] = "true" if ssl_input == "yes" else "false"
+        else:
+            warn("PE credentials skipped — update NUTANIX_PE_USERNAME / NUTANIX_PE_PASSWORD in .vscode/mcp.json before use.")
 
     if need_pc:
         print("\n  Enter your Nutanix Prism Central (PC) credentials.")
-        print("  (Usually different from PE credentials — each org has separate PC/PE accounts.)")
-        print("  Option 1: API key auth (recommended — requires a PC service account + API key).")
-        print("  Option 2: Basic auth (username + password).\n")
+        print("  (Usually different from PE — each org has separate PC/PE accounts.)")
+        print("  Option 1: API key auth (recommended).  Option 2: Basic auth (username + password).")
+        print("  Press Enter at any prompt to skip — placeholders will remain in .vscode/mcp.json.\n")
         api_key_input = input("  PC API key (leave blank to use username/password instead): ").strip()
         if api_key_input:
             env["NUTANIX_PC_API_KEY"] = api_key_input
         else:
-            env["NUTANIX_PC_USERNAME"] = prompt("PC username (e.g. admin)")
-            env["NUTANIX_PC_PASSWORD"] = prompt("PC password", secret=True)
+            pc_username = input("  PC username (e.g. admin, blank to skip): ").strip()
+            if pc_username:
+                env["NUTANIX_PC_USERNAME"] = pc_username
+                env["NUTANIX_PC_PASSWORD"] = getpass.getpass("  PC password: ")
+            else:
+                warn("PC credentials skipped — update NUTANIX_PC_API_KEY or NUTANIX_PC_USERNAME / NUTANIX_PC_PASSWORD in .vscode/mcp.json before use.")
 
     config = {
         "servers": {

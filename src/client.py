@@ -15,8 +15,8 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 _BASE_PATH = "/PrismGateway/services/rest/v2.0"
 
 # Prism Element credentials
-_USERNAME = os.environ.get("NUTANIX_USERNAME", "")
-_PASSWORD = os.environ.get("NUTANIX_PASSWORD", "")
+_USERNAME = os.environ.get("NUTANIX_PE_USERNAME", "")
+_PASSWORD = os.environ.get("NUTANIX_PE_PASSWORD", "")
 _VERIFY_SSL = os.environ.get("NUTANIX_VERIFY_SSL", "false").lower() == "true"
 
 # Prism Central credentials — stored separately from PE (credentials differ per org).
@@ -27,7 +27,7 @@ _PC_API_KEY  = os.environ.get("NUTANIX_PC_API_KEY", "")
 
 if not _USERNAME:
     raise EnvironmentError(
-        "NUTANIX_USERNAME is not set. "
+        "NUTANIX_PE_USERNAME is not set. "
         "Add it to your mcp.json environment configuration."
     )
 
