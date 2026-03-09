@@ -10,6 +10,7 @@ See available_tools.md for the full tool reference.
 import tools.inventory
 import tools.pe_cluster
 import tools.pe_hosts
+import tools.pe_cvms
 import tools.pe_vms
 import tools.pe_storage
 import tools.pe_networking

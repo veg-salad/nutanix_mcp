@@ -33,6 +33,13 @@ PC tools use `extId` (not UUID) as the entity identifier — use values returned
 | `list_hosts` | `tools/pe_hosts.py` | `cluster_name`, `limit`, `page` | All nodes: name, UUID, IPs, CPU/memory capacity, hypervisor version, status. |
 | `get_host` | `tools/pe_hosts.py` | `host_uuid`*, `cluster_name` | Full node detail: hardware, CPU/memory usage, network interfaces, disk inventory, status. |
 
+### Controller VMs (CVMs)
+
+| Tool | Module | Parameters | Description |
+|---|---|---|---|
+| `list_cvms` | `tools/pe_cvms.py` | `cluster_name`, `limit`, `page` | All CVMs (one per node): CVM IP, backplane IP, hypervisor IP, state, metadata store status, oplog %, hardware model/serial. |
+| `get_cvm` | `tools/pe_cvms.py` | `host_uuid`*, `cluster_name` | CVM detail for a specific node: IPs, hypervisor type/version, state, metadata status, oplog %, hardware. |
+
 ### Virtual Machines
 
 | Tool | Module | Parameters | Description |
