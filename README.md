@@ -150,7 +150,7 @@ See [available_tools.md](available_tools.md) for the full tool reference includi
 
 - All tools are **read-only** — no changes are made to your cluster
 - PE tools use the Prism Element **v2.0** REST API (per-cluster)
-- PC tools use the Prism Central **v4.0** REST API (cross-cluster)
+- PC tools use the Prism Central **v4.0** REST API (cross-cluster); `list_pc_alerts` uses the v2.0 gateway (GET with query params) and `get_pc_alert` uses the v3 API — both are cross-cluster via PC, as the v4 alerting namespace is not yet available on all PC versions
 - PC tools use `extId` as the entity identifier; use values from `list_*` calls as input to `get_*` calls
 - Stats metrics are returned in **ppm** (parts per million); divide by 10,000 to convert to a percentage
 - Transport is **stdio** — the server runs locally and is managed by VS Code via `.vscode/mcp.json`

@@ -1,47 +1,50 @@
-"""PC alert tools — list and inspect alerts via Prism Central v4.0 API."""
+"""PC alert tools — list and inspect alerts via Prism Central v2.0 gateway API."""
 
 from app import mcp
 from client import pc_v4_get
 from registry import json_response, resolve_pc_host
 
-_PC_ALERTS = "/api/alerting/v4.0/alerts"
+_PC_ALERTS = "/PrismGateway/services/rest/v2.0/alerts"
 
 
 @mcp.tool()
 def list_pc_alerts(
     pc_name=None,
     limit: int = 50,
-    page: int = 0,
-    filter: str = None,
+    page: int = 1,
+    resolved: bool = False,
+    acknowledged: bool = None,
 ) -> str:
     """
     List alerts across all clusters managed by a Prism Central instance.
 
-    Returns each alert's extId, severity (CRITICAL/WARNING/INFO), title, message,
-    creation time, and resolution status.
+    Uses the Prism Central v2.0 gateway. Returns each alert's id, severity
+    (kCritical/kWarning/kInfo), alert_title, message, resolved/acknowledged
+    status, and timestamps (in microseconds).
 
     Args:
         pc_name: Name from inventory.yaml (prism_central section). Omit to use the default PC.
-        limit: Maximum number of results to return, up to 100 (default 50).
-        page: Zero-based page index for pagination (default 0).
-        filter: Optional OData $filter expression (e.g. "severity eq 'CRITICAL'").
+        limit: Maximum number of results to return (default 50).
+        page: 1-based page index for pagination (default 1).
+        resolved: If False (default), return only active alerts. Set True to include resolved alerts.
+        acknowledged: Filter by acknowledged status. Omit to return all.
     """
-    params = {"$page": page, "$limit": min(limit, 100)}
-    if filter:
-        params["$filter"] = filter
+    params = {"count": min(limit, 100), "page": page, "resolved": str(resolved).lower()}
+    if acknowledged is not None:
+        params["acknowledged"] = str(acknowledged).lower()
     return json_response(pc_v4_get(_PC_ALERTS, params=params, host=resolve_pc_host(pc_name)))
 
 
 @mcp.tool()
-def get_pc_alert(alert_extid: str, pc_name=None) -> str:
+def get_pc_alert(alert_id: str, pc_name=None) -> str:
     """
     Get full details of a specific Prism Central alert.
 
-    Returns severity, impacted entities, root cause analysis, resolution
+    Returns severity, impacted entities, possible causes, resolution
     status, and timestamps.
 
     Args:
-        alert_extid: extId of the alert. Obtain from list_pc_alerts.
+        alert_id: id of the alert (UUID). Obtain from list_pc_alerts.
         pc_name: Name from inventory.yaml (prism_central section). Omit to use the default PC.
     """
-    return json_response(pc_v4_get(f"{_PC_ALERTS}/{alert_extid}", host=resolve_pc_host(pc_name)))
+    return json_response(pc_v4_get(f"/api/nutanix/v3/alerts/{alert_id}", host=resolve_pc_host(pc_name)))

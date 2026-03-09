@@ -17,8 +17,9 @@ def list_pc_tasks(
     """
     List tasks across all clusters managed by a Prism Central instance.
 
-    Returns each task's extId, operation type, status (Queued/Running/Succeeded/Failed),
-    progress percentage, start time, and completion time.
+    Returns each task's extId, operation name (field: 'operation'), status
+    (QUEUED/RUNNING/SUCCEEDED/FAILED), progress percentage, start time,
+    and completion time.
 
     Args:
         pc_name: Name from inventory.yaml (prism_central section). Omit to use the default PC.

@@ -34,5 +34,9 @@ def list_tasks(cluster_name=None, limit: int = 50, include_completed: bool = Fal
         limit: Maximum number of results to return (default 50).
         include_completed: Include completed/failed tasks in addition to running ones (default False).
     """
-    params = {"count": limit, "include_completed": str(include_completed).lower()}
-    return json_response(pe_get("/tasks/", params, host=resolve_host(cluster_name)))
+    # v2.0 /tasks/ is not available on AOS 6.x; use the v0.8 ergon endpoint.
+    # Note: v0.8 uses camelCase params and 'grandTotalEntities' in metadata.
+    params = {"count": limit, "includeCompleted": str(include_completed).lower()}
+    if not include_completed:
+        params["filterCriteria"] = "status!=kSucceeded;status!=kFailed;status!=kAborted"
+    return json_response(pe_get("/tasks", params, host=resolve_host(cluster_name), base_path="/api/nutanix/v0.8"))

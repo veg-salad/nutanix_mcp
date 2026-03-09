@@ -32,11 +32,16 @@ if not _USERNAME:
     )
 
 
-def pe_get(path, params=None, host=None):
-    """Issue an authenticated GET request to Prism Element and return parsed JSON."""
+def pe_get(path, params=None, host=None, base_path=None):
+    """Issue an authenticated GET request to Prism Element and return parsed JSON.
+
+    base_path overrides the default v2.0 base when a different API version is needed,
+    e.g. base_path='/api/nutanix/v0.8' for the ergon task service.
+    """
     if not host:
         raise ValueError("No host provided. Ensure inventory.yaml has at least one cluster entry.")
-    url = f"https://{host}:9440{_BASE_PATH}{path}"
+    effective_base = base_path if base_path is not None else _BASE_PATH
+    url = f"https://{host}:9440{effective_base}{path}"
     try:
         response = requests.get(
             url,

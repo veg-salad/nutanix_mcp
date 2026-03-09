@@ -1,8 +1,12 @@
 """PE storage tools — containers, pools, and physical disks."""
 
+import re
+
 from app import mcp
 from client import pe_get
 from registry import json_response, resolve_host
+
+_UUID_RE = re.compile(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', re.IGNORECASE)
 
 
 @mcp.tool()
@@ -31,9 +35,27 @@ def get_storage_container(container_name: str, cluster_name=None) -> str:
 
     Args:
         container_name: Name or UUID of the storage container. Obtain from list_storage_containers.
+            The PE v2.0 API only supports direct path lookup by UUID; if a name is supplied,
+            the tool resolves it by listing all containers and matching by 'name' field.
         cluster_name: Name from inventory.yaml. Omit to use the default cluster.
     """
-    return json_response(pe_get(f"/storage_containers/{container_name}", host=resolve_host(cluster_name)))
+    host = resolve_host(cluster_name)
+    if _UUID_RE.match(container_name):
+        return json_response(pe_get(f"/storage_containers/{container_name}", host=host))
+    # Name supplied — enumerate and match
+    page, page_size = 1, 100
+    while True:
+        data = pe_get("/storage_containers/", {"count": page_size, "page": page}, host=host)
+        entities = data.get("entities", [])
+        for entity in entities:
+            if entity.get("name") == container_name:
+                uuid = entity.get("storage_container_uuid")
+                return json_response(pe_get(f"/storage_containers/{uuid}", host=host))
+        meta = data.get("metadata", {})
+        if meta.get("end_index", 0) >= meta.get("grand_total_entities", 0):
+            break
+        page += 1
+    return json_response({"error": f"Storage container '{container_name}' not found"})
 
 
 @mcp.tool()
@@ -49,7 +71,8 @@ def list_storage_pools(cluster_name=None, limit: int = 50, page: int = 1) -> str
         limit: Maximum number of results to return (default 50).
         page: Page number for pagination (1-based).
     """
-    return json_response(pe_get("/storage_pools/", {"count": limit, "page": page}, host=resolve_host(cluster_name)))
+    # On AOS 6.x the v2.0 /storage_pools/ endpoint returns 404; the correct path is v1.
+    return json_response(pe_get("/storage_pools", {"count": limit, "page": page}, host=resolve_host(cluster_name), base_path="/PrismGateway/services/rest/v1"))
 
 
 @mcp.tool()

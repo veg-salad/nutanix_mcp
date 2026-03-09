@@ -4,11 +4,31 @@ All ppm (parts-per-million) metrics can be converted to a percentage by dividing
 Example: 500,000 ppm → 50 %.
 """
 
+import re
 import time
 
 from app import mcp
 from client import pe_get
 from registry import json_response, resolve_host
+
+_UUID_RE = re.compile(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', re.IGNORECASE)
+
+
+def _resolve_container_uuid(container_name: str, host: str) -> str:
+    """Resolve a storage container name to its UUID; return as-is if already a UUID."""
+    if _UUID_RE.match(container_name):
+        return container_name
+    page, page_size = 1, 100
+    while True:
+        data = pe_get("/storage_containers/", {"count": page_size, "page": page}, host=host)
+        for entity in data.get("entities", []):
+            if entity.get("name") == container_name:
+                return entity["storage_container_uuid"]
+        meta = data.get("metadata", {})
+        if meta.get("end_index", 0) >= meta.get("grand_total_entities", 0):
+            break
+        page += 1
+    raise ValueError(f"Storage container '{container_name}' not found")
 
 # ---------------------------------------------------------------------------
 # Default metric sets
@@ -43,8 +63,6 @@ _CLUSTER_METRICS = [
     "controller_io_bandwidth_kBps",           # Cluster I/O bandwidth (kB/s)
     "controller_avg_read_io_latency_usecs",   # Avg read latency (µs)
     "controller_avg_write_io_latency_usecs",  # Avg write latency (µs)
-    "storage_usage_bytes",                    # Used storage (bytes)
-    "storage_capacity_bytes",                 # Total storage capacity (bytes)
 ]
 
 _CONTAINER_METRICS = [
@@ -52,8 +70,6 @@ _CONTAINER_METRICS = [
     "controller_io_bandwidth_kBps",           # Container I/O bandwidth (kB/s)
     "controller_avg_read_io_latency_usecs",   # Avg read latency (µs)
     "controller_avg_write_io_latency_usecs",  # Avg write latency (µs)
-    "storage_usage_bytes",                    # Used storage (bytes)
-    "storage_capacity_bytes",                 # Total capacity (bytes)
 ]
 
 
@@ -62,7 +78,7 @@ def _stats_params(metrics, duration_secs, interval_secs):
     now_usecs = int(time.time() * 1_000_000)
     start_usecs = now_usecs - duration_secs * 1_000_000
     return (
-        [("metrics[]", m) for m in metrics]
+        [("metrics", m) for m in metrics]
         + [
             ("startTimeInUsecs", start_usecs),
             ("endTimeInUsecs", now_usecs),
@@ -88,6 +104,8 @@ def get_vm_stats(
     Returns CPU usage (ppm), memory usage (ppm), storage IOPS, I/O bandwidth
     (read/write), read/write latency (µs), and network RX/TX bytes over the
     requested time window.  Divide ppm values by 10,000 to get a percentage.
+    Note: only supported on AHV clusters. VMware ESXi clusters return a 404
+    because VM performance metrics are managed by vCenter, not by Nutanix CVM.
 
     Args:
         vm_uuid: UUID of the VM. Obtain from list_vms.
@@ -162,10 +180,11 @@ def get_storage_container_stats(
     interval_secs: int = 60,
 ) -> str:
     """
-    Get I/O and capacity utilization time-series statistics for a storage container.
+    Get I/O utilization time-series statistics for a storage container.
 
-    Returns IOPS, I/O bandwidth, read/write latency (µs), and storage
-    capacity/usage (bytes) over the requested time window.
+    Returns IOPS, I/O bandwidth, and read/write latency (µs) over the
+    requested time window.  The PE v2.0 stats endpoint requires a UUID;
+    if a container name is supplied the tool resolves it automatically.
 
     Args:
         container_name: Name or UUID of the storage container. Obtain from list_storage_containers.
@@ -173,8 +192,10 @@ def get_storage_container_stats(
         duration_secs: Time window ending now, in seconds (default 3600 = last hour).
         interval_secs: Sampling interval in seconds (default 60).
     """
+    host = resolve_host(cluster_name)
+    container_uuid = _resolve_container_uuid(container_name, host)
     return json_response(pe_get(
-        f"/storage_containers/{container_name}/stats/",
+        f"/storage_containers/{container_uuid}/stats/",
         _stats_params(_CONTAINER_METRICS, duration_secs, interval_secs),
-        host=resolve_host(cluster_name),
+        host=host,
     ))

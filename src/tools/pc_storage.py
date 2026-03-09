@@ -12,8 +12,9 @@ def list_pc_storage_containers(pc_name=None, limit: int = 50, page: int = 0) -> 
     """
     List storage containers across all clusters managed by a Prism Central instance.
 
-    Returns each container's extId, name, cluster, capacity, usage,
-    and data-efficiency settings (compression, dedup, erasure coding).
+    Returns each container's name, capacity, usage, and data-efficiency settings
+    (compression, dedup, erasure coding). Note: the unique identifier field is
+    'containerExtId' (not 'extId') in the response objects.
 
     Args:
         pc_name: Name from inventory.yaml (prism_central section). Omit to use the default PC.

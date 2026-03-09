@@ -12,6 +12,8 @@ def list_images(cluster_name=None, limit: int = 50, page: int = 1) -> str:
 
     Returns each image's UUID, name, image type (DISK_IMAGE or ISO_IMAGE),
     size in bytes, creation time, and current availability status.
+    Note: the Image Service is only available on AHV clusters. This tool
+    returns a 422 error on VMware ESXi or Hyper-V clusters.
 
     Args:
         cluster_name: Name from inventory.yaml. Omit to use the default cluster.
