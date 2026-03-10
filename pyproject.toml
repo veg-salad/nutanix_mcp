@@ -34,8 +34,8 @@ dependencies = [
 nutanix-mcp = "nutanix_mcp.cli:main"
 
 [project.urls]
-Repository = "https://github.com/nutanix-mcp/nutanix-mcp"
-"Bug Tracker" = "https://github.com/nutanix-mcp/nutanix-mcp/issues"
+Repository = "https://github.com/veg-salad/nutanix_mcp"
+"Bug Tracker" = "https://github.com/veg-salad/nutanix_mcp/issues"
 
 [tool.setuptools.packages.find]
 where = ["src"]

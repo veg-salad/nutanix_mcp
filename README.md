@@ -172,7 +172,7 @@ nutanix-mcp/
                                         list_move_plan_workloads
 ```
 
-See [available_tools.md](available_tools.md) for the full tool reference including parameters, return values, and source modules.
+See [available_tools.md](https://github.com/veg-salad/nutanix_mcp/blob/main/available_tools.md) for the full tool reference including parameters, return values, and source modules.
 
 ## Notes
 
