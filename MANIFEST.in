@@ -1,0 +1,4 @@
+include README.md
+include LICENSE
+include available_tools.md
+include inventory.yaml

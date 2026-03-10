@@ -2,9 +2,9 @@
 
 import re
 
-from app import mcp
-from client import pe_get
-from registry import json_response, resolve_host
+from nutanix_mcp.app import mcp
+from nutanix_mcp.client import pe_get
+from nutanix_mcp.registry import json_response, resolve_cluster
 
 _UUID_RE = re.compile(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', re.IGNORECASE)
 
@@ -22,7 +22,7 @@ def list_storage_containers(cluster_name=None, limit: int = 50, page: int = 1) -
         limit: Maximum number of results to return (default 50).
         page: Page number for pagination (1-based).
     """
-    return json_response(pe_get("/storage_containers/", {"count": limit, "page": page}, host=resolve_host(cluster_name)))
+    return json_response(pe_get("/storage_containers/", {"count": limit, "page": page}, **resolve_cluster(cluster_name)))
 
 
 @mcp.tool()
@@ -39,18 +39,18 @@ def get_storage_container(container_name: str, cluster_name=None) -> str:
             the tool resolves it by listing all containers and matching by 'name' field.
         cluster_name: Name from inventory.yaml. Omit to use the default cluster.
     """
-    host = resolve_host(cluster_name)
+    cluster = resolve_cluster(cluster_name)
     if _UUID_RE.match(container_name):
-        return json_response(pe_get(f"/storage_containers/{container_name}", host=host))
+        return json_response(pe_get(f"/storage_containers/{container_name}", **cluster))
     # Name supplied — enumerate and match
     page, page_size = 1, 100
     while True:
-        data = pe_get("/storage_containers/", {"count": page_size, "page": page}, host=host)
+        data = pe_get("/storage_containers/", {"count": page_size, "page": page}, **cluster)
         entities = data.get("entities", [])
         for entity in entities:
             if entity.get("name") == container_name:
                 uuid = entity.get("storage_container_uuid")
-                return json_response(pe_get(f"/storage_containers/{uuid}", host=host))
+                return json_response(pe_get(f"/storage_containers/{uuid}", **cluster))
         meta = data.get("metadata", {})
         if meta.get("end_index", 0) >= meta.get("grand_total_entities", 0):
             break
@@ -72,7 +72,7 @@ def list_storage_pools(cluster_name=None, limit: int = 50, page: int = 1) -> str
         page: Page number for pagination (1-based).
     """
     # On AOS 6.x the v2.0 /storage_pools/ endpoint returns 404; the correct path is v1.
-    return json_response(pe_get("/storage_pools", {"count": limit, "page": page}, host=resolve_host(cluster_name), base_path="/PrismGateway/services/rest/v1"))
+    return json_response(pe_get("/storage_pools", {"count": limit, "page": page}, base_path="/PrismGateway/services/rest/v1", **resolve_cluster(cluster_name)))
 
 
 @mcp.tool()
@@ -88,7 +88,7 @@ def list_disks(cluster_name=None, limit: int = 50, page: int = 1) -> str:
         limit: Maximum number of results to return (default 50).
         page: Page number for pagination (1-based).
     """
-    return json_response(pe_get("/disks/", {"count": limit, "page": page}, host=resolve_host(cluster_name)))
+    return json_response(pe_get("/disks/", {"count": limit, "page": page}, **resolve_cluster(cluster_name)))
 
 
 @mcp.tool()
@@ -103,4 +103,4 @@ def get_disk(disk_uuid: str, cluster_name=None) -> str:
         disk_uuid: UUID of the disk. Obtain from list_disks.
         cluster_name: Name from inventory.yaml. Omit to use the default cluster.
     """
-    return json_response(pe_get(f"/disks/{disk_uuid}", host=resolve_host(cluster_name)))
+    return json_response(pe_get(f"/disks/{disk_uuid}", **resolve_cluster(cluster_name)))

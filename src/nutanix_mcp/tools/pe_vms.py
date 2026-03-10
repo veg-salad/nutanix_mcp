@@ -1,8 +1,8 @@
 """PE VM tools — list, inspect, and retrieve NIC/disk sub-resources."""
 
-from app import mcp
-from client import pe_get
-from registry import json_response, resolve_host
+from nutanix_mcp.app import mcp
+from nutanix_mcp.client import pe_get
+from nutanix_mcp.registry import json_response, resolve_cluster
 
 
 @mcp.tool()
@@ -36,7 +36,7 @@ def list_vms(
     }
     if search_string:
         params["search_string"] = search_string
-    return json_response(pe_get("/vms/", params, host=resolve_host(cluster_name)))
+    return json_response(pe_get("/vms/", params, **resolve_cluster(cluster_name)))
 
 
 @mcp.tool()
@@ -54,7 +54,7 @@ def get_vm(vm_uuid: str, cluster_name=None) -> str:
     return json_response(pe_get(
         f"/vms/{vm_uuid}",
         {"include_vm_disk_config": True, "include_vm_nic_config": True},
-        host=resolve_host(cluster_name),
+        **resolve_cluster(cluster_name),
     ))
 
 
@@ -70,7 +70,7 @@ def get_vm_nics(vm_uuid: str, cluster_name=None) -> str:
         cluster_name: Name from inventory.yaml. Omit to use the default cluster.
     """
     return json_response(
-        pe_get(f"/vms/{vm_uuid}", {"include_vm_nic_config": True}, host=resolve_host(cluster_name))
+        pe_get(f"/vms/{vm_uuid}", {"include_vm_nic_config": True}, **resolve_cluster(cluster_name))
         .get("vm_nics", [])
     )
 
@@ -88,6 +88,6 @@ def get_vm_disks(vm_uuid: str, cluster_name=None) -> str:
         cluster_name: Name from inventory.yaml. Omit to use the default cluster.
     """
     return json_response(
-        pe_get(f"/vms/{vm_uuid}", {"include_vm_disk_config": True}, host=resolve_host(cluster_name))
+        pe_get(f"/vms/{vm_uuid}", {"include_vm_disk_config": True}, **resolve_cluster(cluster_name))
         .get("vm_disk_info", [])
     )

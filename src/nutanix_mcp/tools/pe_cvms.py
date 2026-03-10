@@ -7,9 +7,9 @@ objects, which expose a CVM-centric view via service_vm* and controller_vm_*
 fields.
 """
 
-from app import mcp
-from client import pe_get
-from registry import json_response, resolve_host
+from nutanix_mcp.app import mcp
+from nutanix_mcp.client import pe_get
+from nutanix_mcp.registry import json_response, resolve_cluster
 
 
 def _cvm_view(host: dict) -> dict:
@@ -52,7 +52,7 @@ def list_cvms(cluster_name=None, limit: int = 50, page: int = 1) -> str:
         limit: Maximum number of results to return (default 50).
         page: Page number for pagination (1-based).
     """
-    data = pe_get("/hosts/", {"count": limit, "page": page}, host=resolve_host(cluster_name))
+    data = pe_get("/hosts/", {"count": limit, "page": page}, **resolve_cluster(cluster_name))
     cvms = [_cvm_view(h) for h in data.get("entities", [])]
     result = {"metadata": data.get("metadata", {}), "entities": cvms}
     return json_response(result)
@@ -71,5 +71,5 @@ def get_cvm(host_uuid: str, cluster_name=None) -> str:
         host_uuid: UUID of the host node. Obtain from list_hosts or list_cvms.
         cluster_name: Name from inventory.yaml. Omit to use the default cluster.
     """
-    host = pe_get(f"/hosts/{host_uuid}", host=resolve_host(cluster_name))
+    host = pe_get(f"/hosts/{host_uuid}", **resolve_cluster(cluster_name))
     return json_response(_cvm_view(host))

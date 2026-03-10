@@ -1,8 +1,8 @@
 """PE networking tools — VLANs and network configuration."""
 
-from app import mcp
-from client import pe_get
-from registry import json_response, resolve_host
+from nutanix_mcp.app import mcp
+from nutanix_mcp.client import pe_get
+from nutanix_mcp.registry import json_response, resolve_cluster
 
 
 @mcp.tool()
@@ -17,4 +17,4 @@ def list_subnets(cluster_name=None, limit: int = 50, page: int = 1) -> str:
         limit: Maximum number of results to return (default 50).
         page: Page number for pagination (1-based).
     """
-    return json_response(pe_get("/networks/", {"count": limit, "page": page}, host=resolve_host(cluster_name)))
+    return json_response(pe_get("/networks/", {"count": limit, "page": page}, **resolve_cluster(cluster_name)))

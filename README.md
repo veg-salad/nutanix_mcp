@@ -1,67 +1,64 @@
-# Nutanix Prism MCP for GitHub Copilot
+﻿# Nutanix MCP
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![PyPI](https://img.shields.io/pypi/v/nutanix-mcp)](https://pypi.org/project/nutanix-mcp/)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/downloads/)
 
-Ask GitHub Copilot questions about your Nutanix environment in plain English — VMs, hosts, storage, networking, alerts, tasks, protection domains, resource utilization, and more — directly from VS Code.
+Ask GitHub Copilot questions about your Nutanix environment in plain English — VMs, hosts, storage, networking, alerts, tasks, protection domains, resource utilization, migration plans, and more — directly from VS Code.
 
-## Prerequisites
+Supports **Prism Element (PE)**, **Prism Central (PC)**, and **Nutanix Move** — with per-cluster, per-PC, and per-Move-appliance credentials stored securely in your OS keyring (Windows Credential Manager / macOS Keychain / Linux Secret Service).
+
+## Requirements
 
 - [Python 3.10+](https://www.python.org/downloads/)
 - [VS Code](https://code.visualstudio.com/)
-- GitHub Copilot + Copilot Chat extensions (VS Code will prompt you to install them)
+- GitHub Copilot + Copilot Chat extensions
 
-## Setup
-
-### 1. Run the setup script
-
-Open a terminal, navigate to the `nutanix_mcp` folder, and run:
+## Quick start
 
 ```bash
-python setup.py
+# 1. Install
+pip install nutanix-mcp
+
+# 2. Create a folder for your inventory, navigate to it, and run the wizard
+mkdir my-nutanix && cd my-nutanix
+nutanix-mcp configure
 ```
 
-This single command will:
-- Verify your Python version (3.10+ required)
-- Install all Python dependencies
-- Prompt for your **Prism Element (PE)** and **Prism Central (PC)** credentials and write `.vscode/mcp.json`
-- Prompt you to register your Prism Central instance(s) and Prism Element cluster(s) and write `inventory.yaml`
+The wizard will:
+- Verify Python 3.10+ is active
+- Install / update all dependencies
+- Register your Prism Element cluster(s), Prism Central instance(s), and Move appliance(s) in `inventory.yaml`
+- Store credentials **securely in the OS keyring** — no plain-text passwords anywhere
+- Write `.vscode/mcp.json` pointing VS Code at the server (no credentials in this file)
 
-Credentials are optional at setup time — press Enter to skip any prompt and fill in `.vscode/mcp.json` manually later.
-
-> **Already set up?** Re-run `python setup.py` at any time to add missing credentials or append more clusters / PC instances.
-
-### 2. Open the folder in VS Code
-
-```
-File → Open Folder → select the nutanix_mcp folder
+```bash
+# 3. Open the folder in VS Code
+code .
 ```
 
-VS Code will recommend the GitHub Copilot extensions — install them if not already present.
+In VS Code, open Copilot Chat, switch to **Agent mode**, and start asking questions.
 
-### 3. Confirm the MCP server is active
-
-Open the Copilot Chat panel, click the **Tools** (plug) icon, and confirm `nutanix-prism` is listed and enabled.
+> **Already set up?** Re-run `nutanix-mcp configure` at any time to add new clusters, PC instances, or Move appliances, and to update credentials.
 
 ## Configuration
 
-### Credentials — `.vscode/mcp.json`
+### Credential storage
 
-All credentials live in one place: `.vscode/mcp.json` (created by `setup.py`, gitignored).
+Credentials are stored in the OS keyring under the service name `nutanix-mcp`. Key format:
 
-| Variable | Description |
+| Entity | Keyring key examples |
 |---|---|
-| `NUTANIX_PE_USERNAME` | Prism Element username (e.g. `admin`) |
-| `NUTANIX_PE_PASSWORD` | Prism Element password |
-| `NUTANIX_VERIFY_SSL` | `true` / `false` — whether to verify TLS certificates (default `false`) |
-| `NUTANIX_PC_USERNAME` | Prism Central username (used if no API key is set) |
-| `NUTANIX_PC_PASSWORD` | Prism Central password (used if no API key is set) |
-| `NUTANIX_PC_API_KEY` | Prism Central API key — preferred over username/password when set |
+| PE cluster (default) | `pe.default.username`, `pe.default.password` |
+| PE cluster (override) | `pe.CLUSTER-NAME.username`, `pe.CLUSTER-NAME.password` |
+| Prism Central | `pc.PC-NAME.api_key` (preferred) or `pc.PC-NAME.username` / `pc.PC-NAME.password` |
+| Move appliance | `move.MOVE-NAME.username`, `move.MOVE-NAME.password` |
 
-> PE and PC credentials are kept separate because most organisations use different accounts for each.
+Lookup falls back from named entry → `pe.default.*` → legacy environment variables (`NUTANIX_PE_USERNAME` etc.) for backward compatibility.
 
 ### Cluster inventory — `inventory.yaml`
 
-Register your Prism Central instances and PE clusters here. Edit directly or re-run `setup.py`.
+Register your instances here. Edit directly or re-run `nutanix-mcp configure`.
 
 ```yaml
 prism_central:
@@ -73,17 +70,36 @@ clusters:
     pe_host: 192.168.1.100
   - name: PROD-CLUSTER-2
     pe_host: 192.168.1.200
+
+move_instances:
+  - name: PROD-MOVE-1
+    move_host: 192.168.1.75
 ```
 
-- `prism_central[].name` — label used in prompts (e.g. *"from PC PROD-PC-1"*); pass as `pc_name` to PC tools
-- `prism_central[].pc_host` — Prism Central IP or FQDN
-- `clusters[].name` — label used in prompts (e.g. *"from cluster PROD-CLUSTER-1"*); pass as `cluster_name` to PE tools
-- `clusters[].pe_host` — Prism Element IP or FQDN
+- `name` — label used in prompts and tool parameters (`pc_name`, `cluster_name`, `move_name`)
 - Single entry → selected automatically; multiple entries → specify the name in your prompt
+
+### VS Code — `.vscode/mcp.json`
+
+Generated by `nutanix-mcp configure`. Contains no credentials:
+
+```json
+{
+  "servers": {
+    "nutanix-mcp": {
+      "type": "stdio",
+      "command": "nutanix-mcp",
+      "env": {
+        "NUTANIX_MCP_INVENTORY": "${workspaceFolder}/inventory.yaml"
+      }
+    }
+  }
+}
+```
 
 ## Usage
 
-Switch Copilot Chat to **Agent mode** and ask questions like:
+Switch Copilot Chat to **Agent mode** and ask in plain English:
 
 ```
 List all VMs and their power state
@@ -93,71 +109,81 @@ What tasks are currently running?
 Show resource utilization for the cluster over the last hour
 Get CPU and memory stats for VM <uuid>
 Which hosts are in the cluster and what model are they?
-Show me the NICs for VM xyz
 List all protection domains
+Show migration plans on the Move appliance
+Which VMs are currently being seeded?
 ```
 
-Target a specific cluster or PC by name:
+Target a specific cluster, PC instance, or Move appliance by name:
 
 ```
 List all hosts from cluster PROD-CLUSTER-1
 Show VMs on PROD-CLUSTER-2
 List all VMs managed by PC PROD-PC-1
-Show subnets across all clusters from Prism Central PROD-PC-1
+Show subnets across all clusters from PROD-PC-1
+List migration plans on PROD-MOVE-1
 ```
 
-Copilot will call `list_inventory` automatically to discover available entries when needed.
+Copilot calls `list_inventory` automatically when needed to discover available entries.
 
 ## Project structure
 
 ```
-nutanix_mcp/
-├── inventory.yaml         Cluster & PC registry
-├── setup.py               One-time setup wizard
-├── available_tools.md     Full tool reference
+nutanix-mcp/
+├── inventory.yaml              Cluster, PC, and Move registry (user-generated)
+├── pyproject.toml              Package metadata and dependencies
+├── available_tools.md          Full tool reference
 └── src/
-    ├── server.py          Entry point — imports tool modules, starts MCP server
-    ├── app.py             Shared FastMCP instance
-    ├── registry.py        Inventory loading, host resolvers, JSON helper
-    ├── client.py          HTTP clients for PE v2.0 and PC v4.0 APIs
-    └── tools/
-        ├── inventory.py       list_inventory
-        ├── pe_cluster.py      list_clusters, get_cluster
-        ├── pe_hosts.py        list_hosts, get_host
-        ├── pe_vms.py          list_vms, get_vm, get_vm_nics, get_vm_disks
-        ├── pe_storage.py      list_storage_containers, get_storage_container,
-        │                      list_storage_pools, list_disks, get_disk
-        ├── pe_networking.py   list_subnets
-        ├── pe_images.py       list_images
-        ├── pe_alerts.py       list_alerts, list_events
-        ├── pe_ops.py          list_protection_domains, list_tasks
-        ├── pe_stats.py        get_vm_stats, get_host_stats,
-        │                      get_cluster_stats, get_storage_container_stats
-        ├── pc_clusters.py     list_pc_clusters, get_pc_cluster
-        ├── pc_vms.py          list_pc_vms, get_pc_vm, list_pc_vm_disks, list_pc_vm_nics
-        ├── pc_hosts.py        list_pc_hosts, get_pc_host
-        ├── pc_networking.py   list_pc_subnets
-        ├── pc_images.py       list_pc_images
-        ├── pc_storage.py      list_pc_storage_containers
-        ├── pc_alerts.py       list_pc_alerts, get_pc_alert
-        ├── pc_tasks.py        list_pc_tasks, get_pc_task
-        └── pc_categories.py   list_pc_categories, get_pc_category
+    └── nutanix_mcp/
+        ├── __init__.py
+        ├── app.py              Shared FastMCP instance ("Nutanix MCP")
+        ├── cli.py              Entry point — 'nutanix-mcp' and 'nutanix-mcp configure'
+        ├── server.py           Thin wrapper delegating to cli.main()
+        ├── credentials.py      OS keyring read/write helpers
+        ├── registry.py         Inventory loading, host+credential resolvers, JSON helper
+        ├── client.py           HTTP clients: pe_get, pc_v4_get, move_get
+        └── tools/
+            ├── inventory.py            list_inventory
+            ├── pe_cluster.py           list_clusters, get_cluster
+            ├── pe_hosts.py             list_hosts, get_host
+            ├── pe_cvms.py              list_cvms, get_cvm
+            ├── pe_vms.py               list_vms, get_vm, get_vm_nics, get_vm_disks
+            ├── pe_storage.py           list_storage_containers, get_storage_container,
+            │                           list_storage_pools, list_disks, get_disk
+            ├── pe_networking.py        list_subnets
+            ├── pe_images.py            list_images
+            ├── pe_alerts.py            list_alerts, list_events
+            ├── pe_ops.py               list_protection_domains, list_tasks
+            ├── pe_stats.py             get_vm_stats, get_host_stats,
+            │                           get_cluster_stats, get_storage_container_stats
+            ├── pc_clusters.py          list_pc_clusters, get_pc_cluster
+            ├── pc_vms.py               list_pc_vms, get_pc_vm, list_pc_vm_disks, list_pc_vm_nics
+            ├── pc_hosts.py             list_pc_hosts, get_pc_host
+            ├── pc_networking.py        list_pc_subnets
+            ├── pc_images.py            list_pc_images
+            ├── pc_storage.py           list_pc_storage_containers
+            ├── pc_alerts.py            list_pc_alerts, get_pc_alert, list_pc_alert_policies
+            ├── pc_tasks.py             list_pc_tasks, get_pc_task
+            ├── pc_categories.py        list_pc_categories, get_pc_category, list_pc_category_values
+            ├── move_environments.py    list_move_environments, get_move_environment,
+            │                           list_move_source_environments, list_move_target_environments
+            ├── move_plans.py           list_move_plans, get_move_plan, get_move_plan_status
+            └── move_vms.py             list_move_workloads, get_move_workload,
+                                        list_move_plan_workloads
 ```
 
 See [available_tools.md](available_tools.md) for the full tool reference including parameters, return values, and source modules.
 
 ## Notes
 
-- All tools are **read-only** — no changes are made to your cluster
-- PE tools use the Prism Element **v2.0** REST API (per-cluster)
-- PC tools use the Prism Central **v4.0** REST API (cross-cluster); `list_pc_alerts` uses the v2.0 gateway (GET with query params) and `get_pc_alert` uses the v3 API — both are cross-cluster via PC, as the v4 alerting namespace is not yet available on all PC versions
+- All tools are **read-only** — no changes are made to your Nutanix environment
+- PE tools use the Prism Element **v2.0** REST API (per-cluster, port 9440)
+- PC tools use the Prism Central **v4.0** REST API (cross-cluster, port 9440); alert listing uses the v2.0 gateway at `/PrismGateway/services/rest/v2.0/alerts`
+- Move tools use the Move **v2** REST API (port 443)
 - PC tools use `extId` as the entity identifier; use values from `list_*` calls as input to `get_*` calls
-- Stats metrics are returned in **ppm** (parts per million); divide by 10,000 to convert to a percentage
-- Transport is **stdio** — the server runs locally and is managed by VS Code via `.vscode/mcp.json`
+- Stats metrics are in **ppm** (parts per million); divide by 10,000 to convert to a percentage
+- Transport is **stdio** — the server runs locally and is managed by VS Code
 
 ## Disclaimer
 
-This is an independent, community-built project and is **not an official Nutanix product**. It is not affiliated with, endorsed by, or supported by Nutanix, Inc. in any way. Nutanix and Prism are trademarks of Nutanix, Inc.
-
-Use this tool at your own discretion. While all operations are read-only, you are responsible for ensuring it is used appropriately within your environment. The author provides this project as-is, without warranty of any kind — see the [MIT License](LICENSE) for full terms.
-
+This is an independent, community-built project and is **not an official Nutanix product**. It is not affiliated with, endorsed by, or supported by Nutanix, Inc. in any way. Nutanix, Prism, and Move are trademarks of Nutanix, Inc.

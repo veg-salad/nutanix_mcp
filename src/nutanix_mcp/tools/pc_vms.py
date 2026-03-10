@@ -1,8 +1,8 @@
 """PC VM tools — list, inspect, and retrieve disk/NIC sub-resources via Prism Central v4.0 API."""
 
-from app import mcp
-from client import pc_v4_get
-from registry import json_response, resolve_pc_host
+from nutanix_mcp.app import mcp
+from nutanix_mcp.client import pc_v4_get
+from nutanix_mcp.registry import json_response, resolve_pc_instance
 
 _PC_VMS = "/api/vmm/v4.0/ahv/config/vms"
 
@@ -25,7 +25,7 @@ def list_pc_vms(pc_name=None, limit: int = 50, page: int = 0, filter: str = None
     params = {"$page": page, "$limit": min(limit, 100)}
     if filter:
         params["$filter"] = filter
-    return json_response(pc_v4_get(_PC_VMS, params=params, host=resolve_pc_host(pc_name)))
+    return json_response(pc_v4_get(_PC_VMS, params=params, **resolve_pc_instance(pc_name)))
 
 
 @mcp.tool()
@@ -40,7 +40,7 @@ def get_pc_vm(vm_extid: str, pc_name=None) -> str:
         vm_extid: The extId of the VM. Obtain from list_pc_vms.
         pc_name: Name from inventory.yaml (prism_central section). Omit to use the default PC.
     """
-    return json_response(pc_v4_get(f"{_PC_VMS}/{vm_extid}", host=resolve_pc_host(pc_name)))
+    return json_response(pc_v4_get(f"{_PC_VMS}/{vm_extid}", **resolve_pc_instance(pc_name)))
 
 
 @mcp.tool()
@@ -58,7 +58,7 @@ def list_pc_vm_disks(vm_extid: str, pc_name=None, limit: int = 50, page: int = 0
         page: Zero-based page index for pagination (default 0).
     """
     params = {"$page": page, "$limit": min(limit, 100)}
-    return json_response(pc_v4_get(f"{_PC_VMS}/{vm_extid}/disks", params=params, host=resolve_pc_host(pc_name)))
+    return json_response(pc_v4_get(f"{_PC_VMS}/{vm_extid}/disks", params=params, **resolve_pc_instance(pc_name)))
 
 
 @mcp.tool()
@@ -76,4 +76,4 @@ def list_pc_vm_nics(vm_extid: str, pc_name=None, limit: int = 50, page: int = 0)
         page: Zero-based page index for pagination (default 0).
     """
     params = {"$page": page, "$limit": min(limit, 100)}
-    return json_response(pc_v4_get(f"{_PC_VMS}/{vm_extid}/nics", params=params, host=resolve_pc_host(pc_name)))
+    return json_response(pc_v4_get(f"{_PC_VMS}/{vm_extid}/nics", params=params, **resolve_pc_instance(pc_name)))

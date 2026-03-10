@@ -1,8 +1,8 @@
 """PE operations tools — protection domains and tasks."""
 
-from app import mcp
-from client import pe_get
-from registry import json_response, resolve_host
+from nutanix_mcp.app import mcp
+from nutanix_mcp.client import pe_get
+from nutanix_mcp.registry import json_response, resolve_cluster
 
 
 @mcp.tool()
@@ -18,7 +18,7 @@ def list_protection_domains(cluster_name=None, limit: int = 50, page: int = 1) -
         limit: Maximum number of results to return (default 50).
         page: Page number for pagination (1-based).
     """
-    return json_response(pe_get("/protection_domains/", {"count": limit, "page": page}, host=resolve_host(cluster_name)))
+    return json_response(pe_get("/protection_domains/", {"count": limit, "page": page}, **resolve_cluster(cluster_name)))
 
 
 @mcp.tool()
@@ -39,4 +39,4 @@ def list_tasks(cluster_name=None, limit: int = 50, include_completed: bool = Fal
     params = {"count": limit, "includeCompleted": str(include_completed).lower()}
     if not include_completed:
         params["filterCriteria"] = "status!=kSucceeded;status!=kFailed;status!=kAborted"
-    return json_response(pe_get("/tasks", params, host=resolve_host(cluster_name), base_path="/api/nutanix/v0.8"))
+    return json_response(pe_get("/tasks", params, base_path="/api/nutanix/v0.8", **resolve_cluster(cluster_name)))

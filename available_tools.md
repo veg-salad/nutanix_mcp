@@ -1,9 +1,10 @@
-# Available Tools
+# Nutanix MCP — Available Tools
 
 All tools are **read-only**. No changes are made to your Nutanix environment.
 
 PE tools accept an optional `cluster_name` parameter resolved from `inventory.yaml`.  
 PC tools accept an optional `pc_name` parameter resolved from `inventory.yaml`.  
+Move tools accept an optional `move_name` parameter resolved from `inventory.yaml`.  
 When only one entry is defined the parameter is optional and that entry is selected automatically.  
 PC tools use `extId` (not UUID) as the entity identifier — use values returned by `list_*` tools as input to `get_*` tools.
 
@@ -13,7 +14,7 @@ PC tools use `extId` (not UUID) as the entity identifier — use values returned
 
 | Tool | Module | Description |
 |---|---|---|
-| `list_inventory` | `tools/inventory.py` | List all registered Prism Central instances and PE clusters from `inventory.yaml`. Returns `prism_central` entries (use name as `pc_name`) and `clusters` entries (use name as `cluster_name`). |
+| `list_inventory` | `tools/inventory.py` | List all registered Prism Central instances, PE clusters, and Move appliances from `inventory.yaml`. Returns `prism_central` entries (use name as `pc_name`), `clusters` entries (use name as `cluster_name`), and `move_instances` entries (use name as `move_name`). |
 
 ---
 
@@ -150,8 +151,9 @@ Responses use `extId` as the unique identifier. Use `extId` values from `list_*`
 
 | Tool | Module | Parameters | Description |
 |---|---|---|---|
-| `list_pc_alerts` | `tools/pc_alerts.py` | `pc_name`, `limit`, `page`, `filter` | Alerts across all clusters: extId, severity (CRITICAL/WARNING/INFO), title, message, timestamps, resolution status. OData filter supported. |
-| `get_pc_alert` | `tools/pc_alerts.py` | `alert_extid`*, `pc_name` | Full alert detail: severity, impacted entities, root cause analysis, resolution status, timestamps. |
+| `list_pc_alerts` | `tools/pc_alerts.py` | `pc_name`, `resolved`, `acknowledged`, `severity`, `limit`, `page` | Alerts across all clusters: severity (CRITICAL/WARNING/INFO), title, message, timestamps, resolution status. |
+| `get_pc_alert` | `tools/pc_alerts.py` | `alert_id`*, `pc_name` | Full alert detail: severity, impacted entities, root cause analysis, resolution status, timestamps. |
+| `list_pc_alert_policies` | `tools/pc_alerts.py` | `pc_name`, `limit`, `page` | User-defined alert policies (rules): extId, name, conditions, severity, impacted entity types. |
 
 ### Tasks
 
@@ -166,6 +168,41 @@ Responses use `extId` as the unique identifier. Use `extId` values from `list_*`
 |---|---|---|---|
 | `list_pc_categories` | `tools/pc_categories.py` | `pc_name`, `limit`, `page` | All category key/value tags: extId, key, value, description. |
 | `get_pc_category` | `tools/pc_categories.py` | `category_extid`*, `pc_name` | Full category detail: key, value, description, associated entity count. |
+
+---
+
+---
+
+## Nutanix Move tools — Move 4.x REST API
+
+Move tools target the Nutanix Move appliance directly (not via Prism).  
+All tools are **read-only** — no migrations are initiated or modified.  
+Move tools accept an optional `move_name` parameter resolved from the `move_instances` section of `inventory.yaml`.
+
+### Environments
+
+| Tool | Module | Parameters | Description |
+|---|---|---|---|
+| `list_move_environments` | `tools/move_environments.py` | `move_name` | All registered environments (sources and targets): extId, type (SOURCE/TARGET), protocol, connectivity status. |
+| `get_move_environment` | `tools/move_environments.py` | `env_id`*, `move_name` | Full environment detail: type, protocol, endpoint config, connectivity status. |
+| `list_move_source_environments` | `tools/move_environments.py` | `move_name` | Source environments only (e.g., VMware vCenter, legacy AHV). |
+| `list_move_target_environments` | `tools/move_environments.py` | `move_name` | Target environments only (e.g., AHV clusters registered for migration target). |
+
+### Migration Plans
+
+| Tool | Module | Parameters | Description |
+|---|---|---|---|
+| `list_move_plans` | `tools/move_plans.py` | `move_name`, `status` | All migration plans: name, extId, source/target environments, schedule, status (DRAFT/RUNNING/PAUSED/COMPLETED/FAILED). |
+| `get_move_plan` | `tools/move_plans.py` | `plan_id`*, `move_name` | Full plan detail: environment references, network mappings, VM list, progress metrics. |
+| `get_move_plan_status` | `tools/move_plans.py` | `plan_id`*, `move_name` | Current migration status and progress summary for a plan. |
+
+### Workloads (VMs)
+
+| Tool | Module | Parameters | Description |
+|---|---|---|---|
+| `list_move_workloads` | `tools/move_vms.py` | `move_name`, `status` | All workloads across all plans: VM name, source/target, migration phase, progress, errors. |
+| `get_move_workload` | `tools/move_vms.py` | `workload_id`*, `move_name` | Full workload detail: VM config snapshot, bytes transferred, ETA, current phase, errors/warnings. |
+| `list_move_plan_workloads` | `tools/move_vms.py` | `plan_id`*, `move_name`, `status` | Workloads belonging to a specific migration plan, optionally filtered by status. |
 
 ---
 

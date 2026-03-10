@@ -1,8 +1,8 @@
 """PE host tools — list and inspect nodes."""
 
-from app import mcp
-from client import pe_get
-from registry import json_response, resolve_host
+from nutanix_mcp.app import mcp
+from nutanix_mcp.client import pe_get
+from nutanix_mcp.registry import json_response, resolve_cluster
 
 
 @mcp.tool()
@@ -18,7 +18,7 @@ def list_hosts(cluster_name=None, limit: int = 50, page: int = 1) -> str:
         limit: Maximum number of results to return (default 50).
         page: Page number for pagination (1-based).
     """
-    return json_response(pe_get("/hosts/", {"count": limit, "page": page}, host=resolve_host(cluster_name)))
+    return json_response(pe_get("/hosts/", {"count": limit, "page": page}, **resolve_cluster(cluster_name)))
 
 
 @mcp.tool()
@@ -33,4 +33,4 @@ def get_host(host_uuid: str, cluster_name=None) -> str:
         host_uuid: The UUID of the host. Obtain from list_hosts.
         cluster_name: Name from inventory.yaml. Omit to use the default cluster.
     """
-    return json_response(pe_get(f"/hosts/{host_uuid}", host=resolve_host(cluster_name)))
+    return json_response(pe_get(f"/hosts/{host_uuid}", **resolve_cluster(cluster_name)))

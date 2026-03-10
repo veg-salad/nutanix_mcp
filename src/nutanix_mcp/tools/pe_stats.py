@@ -7,20 +7,20 @@ Example: 500,000 ppm → 50 %.
 import re
 import time
 
-from app import mcp
-from client import pe_get
-from registry import json_response, resolve_host
+from nutanix_mcp.app import mcp
+from nutanix_mcp.client import pe_get
+from nutanix_mcp.registry import json_response, resolve_cluster
 
 _UUID_RE = re.compile(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', re.IGNORECASE)
 
 
-def _resolve_container_uuid(container_name: str, host: str) -> str:
+def _resolve_container_uuid(container_name: str, cluster: dict) -> str:
     """Resolve a storage container name to its UUID; return as-is if already a UUID."""
     if _UUID_RE.match(container_name):
         return container_name
     page, page_size = 1, 100
     while True:
-        data = pe_get("/storage_containers/", {"count": page_size, "page": page}, host=host)
+        data = pe_get("/storage_containers/", {"count": page_size, "page": page}, **cluster)
         for entity in data.get("entities", []):
             if entity.get("name") == container_name:
                 return entity["storage_container_uuid"]
@@ -29,6 +29,7 @@ def _resolve_container_uuid(container_name: str, host: str) -> str:
             break
         page += 1
     raise ValueError(f"Storage container '{container_name}' not found")
+
 
 # ---------------------------------------------------------------------------
 # Default metric sets
@@ -116,7 +117,7 @@ def get_vm_stats(
     return json_response(pe_get(
         f"/vms/{vm_uuid}/stats/",
         _stats_params(_VM_METRICS, duration_secs, interval_secs),
-        host=resolve_host(cluster_name),
+        **resolve_cluster(cluster_name),
     ))
 
 
@@ -143,7 +144,7 @@ def get_host_stats(
     return json_response(pe_get(
         f"/hosts/{host_uuid}/stats/",
         _stats_params(_HOST_METRICS, duration_secs, interval_secs),
-        host=resolve_host(cluster_name),
+        **resolve_cluster(cluster_name),
     ))
 
 
@@ -168,7 +169,7 @@ def get_cluster_stats(
     return json_response(pe_get(
         "/cluster/stats/",
         _stats_params(_CLUSTER_METRICS, duration_secs, interval_secs),
-        host=resolve_host(cluster_name),
+        **resolve_cluster(cluster_name),
     ))
 
 
@@ -192,10 +193,10 @@ def get_storage_container_stats(
         duration_secs: Time window ending now, in seconds (default 3600 = last hour).
         interval_secs: Sampling interval in seconds (default 60).
     """
-    host = resolve_host(cluster_name)
-    container_uuid = _resolve_container_uuid(container_name, host)
+    cluster = resolve_cluster(cluster_name)
+    container_uuid = _resolve_container_uuid(container_name, cluster)
     return json_response(pe_get(
         f"/storage_containers/{container_uuid}/stats/",
         _stats_params(_CONTAINER_METRICS, duration_secs, interval_secs),
-        host=host,
+        **cluster,
     ))

@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nutanix-mcp"
+version = "0.1.0"
+description = "Nutanix MCP — Model Context Protocol server for Nutanix Prism Element, Prism Central, and Move"
+requires-python = ">=3.10"
+license = {file = "LICENSE"}
+readme = "README.md"
+keywords = ["nutanix", "prism", "mcp", "model-context-protocol", "ai", "copilot"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Topic :: System :: Systems Administration",
+    "Intended Audience :: System Administrators",
+    "Intended Audience :: Developers",
+]
+dependencies = [
+    "mcp[cli]>=1.3.0",
+    "requests>=2.31.0",
+    "urllib3>=2.0.0",
+    "pyyaml>=6.0.0",
+    "keyring>=24.0.0",
+    "keyrings.alt>=4.0.0",
+]
+
+[project.scripts]
+nutanix-mcp = "nutanix_mcp.cli:main"
+
+[project.urls]
+Repository = "https://github.com/nutanix-mcp/nutanix-mcp"
+"Bug Tracker" = "https://github.com/nutanix-mcp/nutanix-mcp/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]

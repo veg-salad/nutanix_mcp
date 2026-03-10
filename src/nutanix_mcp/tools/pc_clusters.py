@@ -1,8 +1,8 @@
 """PC cluster tools — list and inspect clusters via Prism Central v4.0 API."""
 
-from app import mcp
-from client import pc_v4_get
-from registry import json_response, resolve_pc_host
+from nutanix_mcp.app import mcp
+from nutanix_mcp.client import pc_v4_get
+from nutanix_mcp.registry import json_response, resolve_pc_instance
 
 _PC_CLUSTERS = "/api/clustermgmt/v4.0/config/clusters"
 
@@ -21,7 +21,7 @@ def list_pc_clusters(pc_name=None, limit: int = 50, page: int = 0) -> str:
         page: Zero-based page index for pagination (default 0).
     """
     params = {"$page": page, "$limit": min(limit, 100)}
-    return json_response(pc_v4_get(_PC_CLUSTERS, params=params, host=resolve_pc_host(pc_name)))
+    return json_response(pc_v4_get(_PC_CLUSTERS, params=params, **resolve_pc_instance(pc_name)))
 
 
 @mcp.tool()
@@ -36,4 +36,4 @@ def get_pc_cluster(cluster_extid: str, pc_name=None) -> str:
         cluster_extid: extId of the cluster. Obtain from list_pc_clusters.
         pc_name: Name from inventory.yaml (prism_central section). Omit to use the default PC.
     """
-    return json_response(pc_v4_get(f"{_PC_CLUSTERS}/{cluster_extid}", host=resolve_pc_host(pc_name)))
+    return json_response(pc_v4_get(f"{_PC_CLUSTERS}/{cluster_extid}", **resolve_pc_instance(pc_name)))
